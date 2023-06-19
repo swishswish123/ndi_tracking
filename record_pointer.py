@@ -42,12 +42,9 @@ def record_data_pointer(save_folder,rom_files_list=["../data/8700339.rom"], num_
 def main():
     project_path = Path(__file__).parent.resolve()
 
-    # folder will be structured as follows:
-    # assets/type/folder/images
-    type = 'EM'  # random / phantom / EM_tracker_calib / tests
-    folder = 'glove_box_clamps'
 
-    save_folder = f'{project_path}/assets/data/{type}/{folder}'
+
+    save_folder = f'{project_path}/assets/data/'
 
     NUM_POINTS = 30 # number of tracking points recorded
     ROM_FILES_LIST = [""]

@@ -45,7 +45,7 @@ def record_data_pointer(save_folder, CT_T_marker , rom_files_list=["../data/8700
     TRACKER = NDITracker(SETTINGS)
     TRACKER.start_tracking()
     print('finished init')
-    
+
     # obtaining a bunch of tracking points
     vecs_all = [] # tracking in marker coord system
     vecs_CT_all = [] # tracking in CT coord system
@@ -76,12 +76,15 @@ def main():
     # obtain marker to tip using pivot calibration
     tip_T_marker = np.eye(4)
     # obtain tip to CT using point registration
-    CT_T_tip = np.eye(4)
+    fixed = np.loadtxt('data/CT_fiducial_points.txt')
+    moving = np.loadtxt('data/pointer_fiducial_points')
+    CT_T_tip = perform_point_registration(fixed, moving)
 
     # combine transform
     CT_T_marker = CT_T_tip @ tip_T_marker
 
     record_data_pointer(save_folder, CT_T_marker ,rom_files_list=ROM_FILES_LIST, num_points=NUM_POINTS)
+
 
 if __name__ == "__main__":
     main()

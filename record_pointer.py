@@ -13,6 +13,8 @@ def perform_point_registration(fixed, moving): # TODO- when would I be able to o
 
     returns 4x4 matrix to convert pointer tip coords to CT coords
     '''
+
+    # converting 4x4 tracking matrices to points
     R, t, FRE = orthogonal_procrustes(fixed, moving) #fixed, moving
     T = extrinsic_vecs_to_matrix(R, t)
     return T
@@ -52,14 +54,15 @@ def record_data_pointer(save_folder, CT_T_marker , rom_files_list=["../data/8700
     for i in range(num_points):
         # recordinng frames and Rt vectors
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
-        tracking_in_CT = tracking[0] @ CT_T_marker
+        #tracking_in_CT = tracking[0] @ CT_T_marker
         # SAVE 4X4 MATRICES
         vecs_all.append(tracking[0])
-        vecs_CT_all.append(tracking_in_CT)
+        #vecs_CT_all.append(tracking_in_CT)
+        
     
     # SAVE tracking
-    np.save(f'{save_folder}/tracking', np.array(vecs_all))
-    np.save(f'{save_folder}/tracking_CT_coords', np.array(vecs_CT_all))
+    np.save(f'{save_folder}/tumour_points_marker_coords.npy', np.array(vecs_all))
+    #np.save(f'{save_folder}/tracking_CT_coords', np.array(vecs_CT_all))
 
     TRACKER.stop_tracking()
     TRACKER.close()
@@ -77,7 +80,7 @@ def main():
     tip_T_marker = np.eye(4)
     # obtain tip to CT using point registration
     fixed = np.loadtxt('data/CT_fiducial_points.txt')
-    moving = np.loadtxt('data/pointer_fiducial_points')
+    moving = np.load('data/registration.npy')
     CT_T_tip = perform_point_registration(fixed, moving)
 
     # combine transform

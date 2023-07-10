@@ -86,6 +86,7 @@ def main():
     # combine transform
     CT_T_marker = CT_T_tip @ tip_T_marker
 
+    input('press enter when you have placed the pointer on the tumour location')
     record_data_pointer(save_folder, CT_T_marker ,rom_files_list=ROM_FILES_LIST, num_points=NUM_POINTS)
 
 

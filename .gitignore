@@ -2,3 +2,4 @@ images/
 .idea/
 B*/
 config/rom_files/.DS_Store
+data/

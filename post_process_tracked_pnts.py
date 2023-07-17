@@ -51,6 +51,64 @@ def perform_point_registration(fixed, moving, tip_T_marker): # TODO- when would 
     plt.show()
     return T
 
+import open3d as o3d
+import copy
+
+def draw_registration_result(source, target, transformation):
+    source_temp = copy.deepcopy(source)
+    target_temp = copy.deepcopy(target)
+    source_temp.paint_uniform_color([1, 0.706, 0])
+    target_temp.paint_uniform_color([0, 0.651, 0.929])
+    source_temp.transform(transformation)
+    o3d.visualization.draw_geometries([source_temp, target_temp])
+
+def perform_surface_registration(fixed, moving,tip_T_marker):
+    '''
+    fixed: CT scan 3D point cloud
+    moving: tracked 4x4 matrices
+    tip_T_marker: transform from marker to tip
+    '''
+    # converting 4x4 tracking matrices to points
+    #fixed_pnts = fixed[:-1,1:]
+    # Pass xyz to Open3D.o3d.geometry.PointCloud and visualize
+    fixed_o3d = o3d.geometry.PointCloud()
+    fixed_o3d.points = o3d.utility.Vector3dVector(fixed)
+
+    # converting to pointer tip coords
+    T_total = tip_T_marker @ moving[:,:,:] 
+    pnts_hom = T_total  @ np.array([0,0,0,1])
+    moving_pnts = cv2.convertPointsFromHomogeneous(pnts_hom).squeeze()
+
+    moving_o3d = o3d.geometry.PointCloud()
+    moving_o3d.points = o3d.utility.Vector3dVector(moving_pnts)
+
+    draw_registration_result(moving_o3d, fixed_o3d, np.eye(4))
+
+    # PERFORM regisrtation
+    moving_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    o3d.geometry.PointCloud.estimate_covariances(moving_o3d)
+    fixed_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    o3d.geometry.PointCloud.estimate_covariances(fixed_o3d)
+
+    # generalised ICP
+    target_T_source_generalised = o3d.pipelines.registration.registration_icp(
+        moving_o3d, fixed_o3d, max_correspondence_distance=10000,
+            estimation_method=o3d.pipelines.registration.TransformationEstimationForGeneralizedICP()
+        )
+    
+    # Define the parameters for the ICP algorithm
+    threshold = 1000 # Distance threshold for corresponding points
+    trans_init = np.eye(4)  # Initial transformation
+    target_T_source_ICP = o3d.pipelines.registration.registration_icp(
+        moving_o3d, fixed_o3d, threshold, trans_init,
+        o3d.pipelines.registration.TransformationEstimationPointToPoint())
+
+    T = target_T_source_generalised.transformation
+
+    draw_registration_result(moving_o3d, fixed_o3d, T)
+    
+    return T
+
 
 def calculate_euclid_dist(pointer_tip_in_mri_space,tumour_in_mri_space ):
     """
@@ -82,15 +140,28 @@ def calculate_euclid_dist(pointer_tip_in_mri_space,tumour_in_mri_space ):
 
 def main(): 
 
-    # marker to tip (obtained from Joao)
-    tip_T_marker = extrinsic_vecs_to_matrix(np.array([0,0,0],dtype=np.float32),np.array([-18.5, 0.6, -157.6], dtype=np.float64))
-    
-    # obtain tip to CT using point registration
-    fixed = np.loadtxt('data/CT_fiducial_points.txt')
     moving = np.load('registration.npy')
+    method = 'surface'
+
+    # marker to tip (obtained from Joao)
+    R_tip = np.array([0,0,0],dtype=np.float32)
+    T_tip = np.array([-18.5, 0.6, -157.6], dtype=np.float64)
+    tip_T_marker = extrinsic_vecs_to_matrix(R_tip,T_tip)
     
 
-    CT_T_tip = perform_point_registration(fixed, moving, tip_T_marker)
+    if method == 'point':
+        # obtain tip to CT using point registration
+        fiducial_points = np.loadtxt('data/CT_fiducial_points.txt')
+        
+        CT_T_tip = perform_point_registration(fiducial_points, moving, tip_T_marker)
+
+    elif method == 'surface':
+        # CT scan
+        CT_file='data/phantom_surface_CT.ply'
+        pcd_CT = o3d.io.read_point_cloud(CT_file)
+        CT_points_np = np.array(pcd_CT.points)
+        
+        CT_T_tip = perform_surface_registration(CT_points_np, moving, tip_T_marker)
 
     # combine transform
     CT_T_marker = CT_T_tip @ tip_T_marker
@@ -100,6 +171,7 @@ def main():
     T_total = CT_T_marker @ pnts_pointer_tip
     pnts_tumour_CT = T_total@np.array([0,0,0,1])   
     pnt_tumour_CT = pnts_tumour_CT.mean(axis=0)[:3]
+    fixed = np.loadtxt('data/CT_fiducial_points.txt')
     pnt_tumour_CT_gt = fixed[-1,1:]
 
     accuracy = calculate_euclid_dist(pnt_tumour_CT_gt,pnt_tumour_CT)

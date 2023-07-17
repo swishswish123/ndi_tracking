@@ -26,10 +26,6 @@ def record_fiducial_points(save_folder, points_dictionary, rom_path="../data/870
 
     vecs_all = []  # tracking in marker coord system
     
-    while True:
-        port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
-        print(tracking)
-
     # for each fiducial point,
     for key in points_dictionary:
         input(f"place pointer on fiducial marker {key} which is on the patient's {points_dictionary[key]}. Once done press enter")

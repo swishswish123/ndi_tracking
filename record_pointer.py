@@ -15,6 +15,8 @@ def perform_point_registration(fixed, moving): # TODO- when would I be able to o
     '''
 
     # converting 4x4 tracking matrices to points
+    fixed_pnts = fixed[:,1:]
+    #moving_pnts = 
     R, t, FRE = orthogonal_procrustes(fixed, moving) #fixed, moving
     T = extrinsic_vecs_to_matrix(R, t)
     return T
@@ -41,8 +43,8 @@ def record_data_pointer(save_folder, CT_T_marker , rom_files_list=["../data/8700
     print('init params')
     # init params
     SETTINGS = {
-    "tracker type": "polaris",
-    "romfiles" : rom_files_list
+        "tracker type": "polaris",
+        "romfiles" : rom_files_list
         }
     TRACKER = NDITracker(SETTINGS)
     TRACKER.start_tracking()
